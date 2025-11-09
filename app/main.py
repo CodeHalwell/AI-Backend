@@ -133,7 +133,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 if settings.is_production:
     app.add_middleware(
         TrustedHostMiddleware,
-        allowed_hosts=["*.yourdomain.com", "yourdomain.com"]
+        allowed_hosts=settings.TRUSTED_HOSTS
     )
 
 # 2. CORS Middleware - Allow cross-origin requests
