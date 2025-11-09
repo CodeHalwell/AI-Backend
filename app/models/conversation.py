@@ -162,5 +162,12 @@ class Conversation(Base, BaseModel, SoftDeleteMixin):
         This method is kept for backward compatibility but should not be used
         in production code with concurrent access.
         """
+        import warnings
+        warnings.warn(
+            "add_message_count() is deprecated due to race conditions. "
+            "Use atomic SQL updates with SQLAlchemy's update() instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
         self.total_messages += 1
         self.total_tokens += tokens

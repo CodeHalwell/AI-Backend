@@ -96,11 +96,12 @@ class SoftDeleteMixin:
 
     Usage:
         # Soft delete
+        from datetime import datetime, timezone
         user.is_deleted = True
-        user.deleted_at = datetime.utcnow()
+        user.deleted_at = datetime.now(timezone.utc)
 
         # Query only active records
-        query = select(User).where(User.is_deleted == False)
+        query = select(User).where(User.is_deleted.is_(False))
     """
 
     is_deleted = Column(
