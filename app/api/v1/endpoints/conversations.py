@@ -64,7 +64,7 @@ async def list_conversations(
     result = await db.execute(
         select(Conversation)
         .where(Conversation.user_id == UUID(user_id))
-        .where(not Conversation.is_deleted)
+        .where(Conversation.is_deleted == False)
         .order_by(Conversation.updated_at.desc())
         .offset(skip)
         .limit(limit)
