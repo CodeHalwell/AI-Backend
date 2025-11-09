@@ -45,7 +45,7 @@ async def list_agents(
     result = await db.execute(
         select(Agent)
         .where(Agent.owner_id == UUID(user_id))
-        .where(not Agent.is_deleted)
+        .where(Agent.is_deleted == False)
         .offset(skip)
         .limit(limit)
     )
