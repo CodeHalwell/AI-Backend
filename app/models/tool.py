@@ -117,8 +117,8 @@ class Tool(Base, BaseModel, SoftDeleteMixin):
         comment="Number of failed executions",
     )
 
-    # Metadata
-    metadata = Column(
+    # Extra Data
+    extra_data = Column(
         JSON,
         nullable=True,
         default=dict,

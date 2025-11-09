@@ -18,7 +18,7 @@ class AgentBase(BaseModel):
     tools: Optional[List[UUID]] = Field(default_factory=list)
     memory_type: str = Field(default="conversation")
     max_context_messages: int = Field(default=10, ge=1, le=100)
-    metadata: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    extra_data: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
 
 class AgentCreate(AgentBase):
@@ -37,7 +37,7 @@ class AgentUpdate(BaseModel):
     tools: Optional[List[UUID]] = None
     memory_type: Optional[str] = None
     max_context_messages: Optional[int] = Field(None, ge=1, le=100)
-    metadata: Optional[Dict[str, Any]] = None
+    extra_data: Optional[Dict[str, Any]] = None
 
 
 class AgentResponse(AgentBase):

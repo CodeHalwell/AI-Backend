@@ -99,8 +99,8 @@ class Message(Base, BaseModel):
         comment="Results from tool executions",
     )
 
-    # Metadata
-    metadata = Column(
+    # Extra Data
+    extra_data = Column(
         JSON,
         nullable=True,
         default=dict,

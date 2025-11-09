@@ -118,8 +118,8 @@ class Agent(Base, BaseModel, SoftDeleteMixin):
         comment="Maximum number of messages to keep in context",
     )
 
-    # Metadata
-    metadata = Column(
+    # Extra Data
+    extra_data = Column(
         JSON,
         nullable=True,
         default=dict,

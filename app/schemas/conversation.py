@@ -55,7 +55,7 @@ class MessageResponse(BaseModel):
     tokens: int
     tool_calls: Optional[Dict[str, Any]]
     tool_results: Optional[Dict[str, Any]]
-    metadata: Optional[Dict[str, Any]]
+    extra_data: Optional[Dict[str, Any]]
     created_at: datetime
 
     class Config:

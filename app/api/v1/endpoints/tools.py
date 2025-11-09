@@ -24,7 +24,7 @@ class ToolCreate(BaseModel):
     handler: str = Field(..., max_length=500)
     requires_confirmation: bool = False
     max_calls_per_minute: int = Field(default=10, ge=1)
-    metadata: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    extra_data: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
 
 class ToolResponse(BaseModel):
@@ -39,7 +39,7 @@ class ToolResponse(BaseModel):
     total_calls: int
     successful_calls: int
     failed_calls: int
-    metadata: Optional[Dict[str, Any]]
+    extra_data: Optional[Dict[str, Any]]
     created_at: datetime
     updated_at: datetime
 
