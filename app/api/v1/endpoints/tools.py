@@ -80,7 +80,7 @@ async def list_tools(
     user_id: str = Depends(get_current_user_id),
 ):
     """List available tools."""
-    query = select(Tool).where(Tool.is_deleted == False)
+    query = select(Tool).where(~Tool.is_deleted)
 
     if only_enabled:
         query = query.where(Tool.is_enabled)
