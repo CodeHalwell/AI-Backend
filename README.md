@@ -277,7 +277,7 @@ pytest -v
 
 - **Prometheus**: Metrics collection on `/metrics`
 - **Grafana**: Dashboards for visualization
-- **Jaeger**: Distributed tracing
+- **OpenTelemetry**: Distributed tracing via OTLP exporter (compatible with Jaeger, Zipkin, etc.)
 - **ELK Stack**: Log aggregation
 
 ## 🔒 Security

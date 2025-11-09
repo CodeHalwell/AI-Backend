@@ -47,7 +47,7 @@ dependencies = [
     "opentelemetry-api==1.22.0",
     "opentelemetry-sdk==1.22.0",
     "opentelemetry-instrumentation-fastapi==0.43b0",
-    "opentelemetry-exporter-jaeger==1.22.0",
+    "opentelemetry-exporter-otlp==1.22.0",
     
     # Rate limiting and middleware
     "slowapi==0.1.9",

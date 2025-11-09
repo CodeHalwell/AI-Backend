@@ -106,8 +106,10 @@ class Settings(BaseSettings):
     # Monitoring
     ENABLE_METRICS: bool = Field(default=True, description="Enable Prometheus metrics")
     ENABLE_TRACING: bool = Field(default=True, description="Enable OpenTelemetry tracing")
-    JAEGER_AGENT_HOST: str = Field(default="localhost", description="Jaeger agent host")
-    JAEGER_AGENT_PORT: int = Field(default=6831, description="Jaeger agent port")
+    OTLP_ENDPOINT: str = Field(
+        default="http://localhost:4317",
+        description="OpenTelemetry OTLP endpoint for traces (gRPC)"
+    )
 
     # Pagination
     DEFAULT_PAGE_SIZE: int = Field(default=20, description="Default items per page")
