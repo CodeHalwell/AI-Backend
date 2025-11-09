@@ -20,7 +20,7 @@ Features:
 
 import logging
 import sys
-from typing import Any, Dict
+from typing import Any
 
 import structlog
 from structlog.types import EventDict, Processor
@@ -31,7 +31,7 @@ from app.core.config import settings
 def add_app_context(logger: Any, method_name: str, event_dict: EventDict) -> EventDict:
     """
     Add application context to all log entries.
-    
+
     Automatically includes:
     - Application name and version
     - Environment
@@ -46,13 +46,13 @@ def add_app_context(logger: Any, method_name: str, event_dict: EventDict) -> Eve
 def setup_logging() -> None:
     """
     Configure application logging.
-    
+
     Sets up:
     - Structlog with appropriate processors
     - Standard library logging integration
     - Console output with formatting
     """
-    
+
     # Determine output format based on environment
     if settings.is_production:
         # Production: JSON format for log aggregation
@@ -84,7 +84,7 @@ def setup_logging() -> None:
             add_app_context,
             structlog.dev.ConsoleRenderer(colors=True),
         ]
-    
+
     # Configure structlog
     structlog.configure(
         processors=processors,
@@ -93,14 +93,14 @@ def setup_logging() -> None:
         logger_factory=structlog.stdlib.LoggerFactory(),
         cache_logger_on_first_use=True,
     )
-    
+
     # Configure standard library logging
     logging.basicConfig(
         format="%(message)s",
         stream=sys.stdout,
         level=getattr(logging, settings.LOG_LEVEL.upper()),
     )
-    
+
     # Set log levels for noisy libraries
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
     logging.getLogger("uvicorn.error").setLevel(logging.INFO)
@@ -114,21 +114,21 @@ logger = structlog.get_logger()
 class LoggingMiddleware:
     """
     FastAPI middleware for request/response logging.
-    
+
     Logs:
     - Request method, path, and headers
     - Response status code and time
     - Request ID for tracing
     """
-    
+
     async def __call__(self, request, call_next):
         """Process request and log details."""
         import time
         import uuid
-        
+
         # Generate request ID
         request_id = str(uuid.uuid4())
-        
+
         # Log request
         logger.info(
             "Request started",
@@ -137,13 +137,13 @@ class LoggingMiddleware:
             path=request.url.path,
             client=request.client.host if request.client else None,
         )
-        
+
         # Process request
         start_time = time.time()
         try:
             response = await call_next(request)
             process_time = time.time() - start_time
-            
+
             # Log response
             logger.info(
                 "Request completed",
@@ -153,13 +153,13 @@ class LoggingMiddleware:
                 status_code=response.status_code,
                 duration_ms=round(process_time * 1000, 2),
             )
-            
+
             # Add headers
             response.headers["X-Request-ID"] = request_id
             response.headers["X-Process-Time"] = str(process_time)
-            
+
             return response
-            
+
         except Exception as exc:
             process_time = time.time() - start_time
             logger.error(

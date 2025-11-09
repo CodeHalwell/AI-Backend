@@ -3,18 +3,17 @@
 from typing import List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import get_current_user_id
 from app.db.session import get_db
+from app.models.agent import Agent
 from app.models.conversation import Conversation
 from app.models.message import Message, MessageRole
-from app.models.agent import Agent
 from app.schemas.conversation import (
     ConversationCreate,
-    ConversationUpdate,
     ConversationResponse,
     MessageCreate,
     MessageResponse,
@@ -37,20 +36,20 @@ async def create_conversation(
         .where(Agent.owner_id == UUID(user_id))
     )
     agent = result.scalar_one_or_none()
-    
+
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
-    
+
     conversation = Conversation(
         **conversation_data.model_dump(),
         user_id=UUID(user_id),
     )
-    
+
     db.add(conversation)
     agent.total_conversations += 1
     await db.commit()
     await db.refresh(conversation)
-    
+
     return conversation
 
 
@@ -65,7 +64,7 @@ async def list_conversations(
     result = await db.execute(
         select(Conversation)
         .where(Conversation.user_id == UUID(user_id))
-        .where(Conversation.is_deleted == False)
+        .where(not Conversation.is_deleted)
         .order_by(Conversation.updated_at.desc())
         .offset(skip)
         .limit(limit)
@@ -87,10 +86,10 @@ async def get_conversation(
         .where(Conversation.user_id == UUID(user_id))
     )
     conversation = result.scalar_one_or_none()
-    
+
     if not conversation:
         raise HTTPException(status_code=404, detail="Conversation not found")
-    
+
     return conversation
 
 
@@ -109,10 +108,10 @@ async def send_message(
         .where(Conversation.user_id == UUID(user_id))
     )
     conversation = result.scalar_one_or_none()
-    
+
     if not conversation:
         raise HTTPException(status_code=404, detail="Conversation not found")
-    
+
     # Create user message
     user_message = Message(
         conversation_id=conversation_id,
@@ -120,17 +119,28 @@ async def send_message(
         content=message_data.content,
         tokens=len(message_data.content.split()),  # Simplified token count
     )
-    
+
     db.add(user_message)
-    conversation.add_message_count(user_message.tokens)
-    
+
+    # Atomically update conversation counters to prevent race conditions
+    # This uses SQL-level incrementation instead of read-modify-write
+    stmt = (
+        update(Conversation)
+        .where(Conversation.id == conversation_id)
+        .values(
+            total_messages=Conversation.total_messages + 1,
+            total_tokens=Conversation.total_tokens + user_message.tokens
+        )
+    )
+    await db.execute(stmt)
+
     # TODO: Call AI API to get response
     # For now, just return the user message
     # In production, this would call OpenAI/Anthropic API
-    
+
     await db.commit()
     await db.refresh(user_message)
-    
+
     return user_message
 
 
@@ -150,10 +160,10 @@ async def get_messages(
         .where(Conversation.user_id == UUID(user_id))
     )
     conversation = conv_result.scalar_one_or_none()
-    
+
     if not conversation:
         raise HTTPException(status_code=404, detail="Conversation not found")
-    
+
     # Get messages
     result = await db.execute(
         select(Message)
@@ -163,5 +173,5 @@ async def get_messages(
         .limit(limit)
     )
     messages = result.scalars().all()
-    
+
     return messages

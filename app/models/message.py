@@ -16,10 +16,12 @@ Design:
 - Index by conversation for fast retrieval
 """
 
-from sqlalchemy import Column, String, Integer, JSON, ForeignKey, Text, Enum as SQLEnum
+import enum
+
+from sqlalchemy import JSON, Column, ForeignKey, Integer, Text
+from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-import enum
 
 from app.db.session import Base
 from app.models.base import BaseModel
@@ -28,7 +30,7 @@ from app.models.base import BaseModel
 class MessageRole(str, enum.Enum):
     """
     Message role in conversation.
-    
+
     Roles:
     - USER: Message from user
     - ASSISTANT: Message from AI assistant
@@ -44,16 +46,16 @@ class MessageRole(str, enum.Enum):
 class Message(Base, BaseModel):
     """
     Individual message in a conversation.
-    
+
     Stores:
     - Message content
     - Role (user/assistant/system/tool)
     - Token usage
     - Tool calls if applicable
     """
-    
+
     __tablename__ = "messages"
-    
+
     # Relationship
     conversation_id = Column(
         UUID(as_uuid=True),
@@ -62,20 +64,20 @@ class Message(Base, BaseModel):
         index=True,
         comment="Conversation this message belongs to",
     )
-    
+
     # Message Content
     role = Column(
         SQLEnum(MessageRole),
         nullable=False,
         comment="Role: user, assistant, system, or tool",
     )
-    
+
     content = Column(
         Text,
         nullable=False,
         comment="Message content",
     )
-    
+
     # Token Usage
     tokens = Column(
         Integer,
@@ -83,20 +85,20 @@ class Message(Base, BaseModel):
         default=0,
         comment="Number of tokens in this message",
     )
-    
+
     # Tool Calls (for function calling)
     tool_calls = Column(
         JSON,
         nullable=True,
         comment="Tool/function calls made in this message",
     )
-    
+
     tool_results = Column(
         JSON,
         nullable=True,
         comment="Results from tool executions",
     )
-    
+
     # Metadata
     metadata = Column(
         JSON,
@@ -104,24 +106,24 @@ class Message(Base, BaseModel):
         default=dict,
         comment="Additional message metadata",
     )
-    
+
     # Relationships
     conversation = relationship(
         "Conversation",
         back_populates="messages",
         lazy="selectin",
     )
-    
+
     def __repr__(self) -> str:
         """String representation for debugging."""
         content_preview = self.content[:50] + "..." if len(self.content) > 50 else self.content
         return f"<Message {self.role.value}: {content_preview}>"
-    
+
     @property
     def is_from_user(self) -> bool:
         """Check if message is from user."""
         return self.role == MessageRole.USER
-    
+
     @property
     def is_from_assistant(self) -> bool:
         """Check if message is from assistant."""

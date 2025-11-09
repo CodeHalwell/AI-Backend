@@ -23,20 +23,19 @@ Connection Pooling Benefits:
 
 from typing import AsyncGenerator
 
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import declarative_base
-from sqlalchemy.pool import NullPool, QueuePool
+from sqlalchemy.pool import QueuePool
 
 from app.core.config import settings
 from app.core.logging import logger
-
 
 # ============================================================================
 # ENGINE CONFIGURATION
 # ============================================================================
 
 # Create async engine with optimized pooling
-# 
+#
 # Pool Configuration:
 # - pool_size: Number of permanent connections to maintain
 # - max_overflow: Additional connections allowed when pool is full
@@ -67,7 +66,7 @@ engine = create_async_engine(
 # ============================================================================
 
 # Create session factory
-# 
+#
 # Configuration:
 # - autocommit=False: Explicit transaction control (recommended)
 # - autoflush=False: Manual flush control for better performance
@@ -104,19 +103,19 @@ Base = declarative_base()
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     FastAPI dependency for database sessions.
-    
+
     Usage:
         @app.get("/users")
         async def get_users(db: AsyncSession = Depends(get_db)):
             result = await db.execute(select(User))
             return result.scalars().all()
-    
+
     How it works:
     1. Creates a new session for each request
     2. Yields session to route handler
     3. Automatically closes session after request
     4. Rolls back on exceptions
-    
+
     Why use dependency injection?
     - Automatic session lifecycle management
     - Easy to test (can mock database)
@@ -142,21 +141,20 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 async def init_db() -> None:
     """
     Initialize database.
-    
+
     Creates all tables defined in models.
-    
+
     Note: In production, use Alembic migrations instead.
     This is mainly for development and testing.
     """
     try:
         # Import all models here to ensure they're registered
-        from app.models import user, agent, conversation, message, tool
-        
+
         async with engine.begin() as conn:
             # Create all tables
             await conn.run_sync(Base.metadata.create_all)
             logger.info("Database tables created successfully")
-            
+
     except Exception as e:
         logger.error("Failed to initialize database", error=str(e), exc_info=True)
         raise
@@ -165,7 +163,7 @@ async def init_db() -> None:
 async def close_db() -> None:
     """
     Close database connections.
-    
+
     Called during application shutdown.
     """
     try:

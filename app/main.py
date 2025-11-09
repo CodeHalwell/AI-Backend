@@ -27,10 +27,10 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
-from app.core.config import settings
-from app.core.logging import setup_logging, logger
-from app.db.session import engine, init_db
 from app.api.v1.api import api_router
+from app.core.config import settings
+from app.core.logging import logger, setup_logging
+from app.db.session import engine, init_db
 
 # Setup logging
 setup_logging()
@@ -39,7 +39,7 @@ setup_logging()
 def get_limiter_key(request: Request) -> str:
     """
     Get rate limiter key from request.
-    
+
     Uses user ID if authenticated, otherwise falls back to IP address.
     This provides more accurate rate limiting per user.
     """
@@ -58,11 +58,11 @@ limiter = Limiter(key_func=get_limiter_key)
 async def lifespan(app: FastAPI) -> AsyncGenerator:
     """
     Application lifespan manager.
-    
+
     Handles startup and shutdown events:
     - Startup: Initialize database, cache connections, etc.
     - Shutdown: Close connections gracefully
-    
+
     Why use lifespan instead of on_event?
     - Modern FastAPI recommendation
     - Better async/await support
@@ -70,40 +70,40 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     """
     # Startup
     logger.info("Starting up AI Backend...", environment=settings.ENVIRONMENT)
-    
+
     try:
         # Initialize database
         await init_db()
         logger.info("Database initialized successfully")
-        
+
         # Initialize Redis connection is handled lazily by get_redis()
         logger.info("Redis connection pool ready")
-        
+
         logger.info(
             "Application started successfully",
             app_name=settings.APP_NAME,
             version=settings.APP_VERSION,
             environment=settings.ENVIRONMENT,
         )
-        
+
     except Exception as e:
         logger.error("Failed to start application", error=str(e), exc_info=True)
         raise
-    
+
     yield  # Application is running
-    
+
     # Shutdown
     logger.info("Shutting down AI Backend...")
-    
+
     try:
         # Close database connections
         await engine.dispose()
         logger.info("Database connections closed")
-        
+
         # Redis connections are closed automatically by connection pool
-        
+
         logger.info("Application shut down successfully")
-        
+
     except Exception as e:
         logger.error("Error during shutdown", error=str(e), exc_info=True)
 
@@ -158,7 +158,7 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """
     Global exception handler for uncaught exceptions.
-    
+
     Why?
     - Prevents stack traces from leaking in production
     - Provides consistent error response format
@@ -171,7 +171,7 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
         error=str(exc),
         exc_info=True,
     )
-    
+
     # Don't expose internal errors in production
     if settings.is_production:
         return JSONResponse(
@@ -181,7 +181,7 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
                 "error_id": "Please contact support with this error ID",
             },
         )
-    
+
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={"detail": str(exc)},
@@ -196,12 +196,12 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
 async def health_check() -> dict:
     """
     Health check endpoint.
-    
+
     Used by:
     - Load balancers to check if instance is healthy
     - Kubernetes liveness probe
     - Monitoring systems
-    
+
     Returns basic application status.
     """
     return {
@@ -216,11 +216,11 @@ async def health_check() -> dict:
 async def readiness_check() -> dict:
     """
     Readiness check endpoint.
-    
+
     Used by:
     - Kubernetes readiness probe
     - Load balancers to determine if instance can receive traffic
-    
+
     Checks if the application is ready to serve requests.
     This includes database connectivity, cache availability, etc.
     """
@@ -228,7 +228,7 @@ async def readiness_check() -> dict:
     # - Database connectivity
     # - Redis connectivity
     # - External API availability
-    
+
     return {
         "status": "ready",
         "database": "connected",
@@ -262,7 +262,7 @@ app.include_router(api_router, prefix="/api/v1")
 async def root() -> dict:
     """
     Root endpoint.
-    
+
     Provides basic API information and links to documentation.
     """
     return {
@@ -280,7 +280,7 @@ async def root() -> dict:
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     # Run with uvicorn for development
     # For production, use: gunicorn app.main:app -k uvicorn.workers.UvicornWorker
     uvicorn.run(

@@ -17,36 +17,38 @@ Schema Types:
 - Response: For API responses (excludes password)
 """
 
+from datetime import datetime
 from typing import Optional
 from uuid import UUID
-from datetime import datetime
-from pydantic import BaseModel, EmailStr, Field, validator
+
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.models.user import UserRole
 
 
 class UserBase(BaseModel):
     """Base user schema with common fields."""
-    
+
     email: EmailStr = Field(..., description="User email address")
     full_name: Optional[str] = Field(None, max_length=255, description="User's full name")
 
 
 class UserCreate(UserBase):
     """Schema for user registration."""
-    
+
     password: str = Field(
         ...,
         min_length=8,
         max_length=100,
         description="User password (min 8 characters)",
     )
-    
-    @validator("password")
+
+    @field_validator("password")
+    @classmethod
     def validate_password_strength(cls, v: str) -> str:
         """
         Validate password strength.
-        
+
         Requirements:
         - At least 8 characters
         - Contains uppercase and lowercase
@@ -63,7 +65,7 @@ class UserCreate(UserBase):
 
 class UserUpdate(BaseModel):
     """Schema for user profile updates."""
-    
+
     email: Optional[EmailStr] = None
     full_name: Optional[str] = Field(None, max_length=255)
     password: Optional[str] = Field(None, min_length=8, max_length=100)
@@ -71,28 +73,28 @@ class UserUpdate(BaseModel):
 
 class UserResponse(UserBase):
     """Schema for user responses (excludes sensitive data)."""
-    
+
     id: UUID
     role: UserRole
     is_active: bool
     is_verified: bool
     created_at: datetime
     updated_at: datetime
-    
+
     class Config:
         from_attributes = True  # Enable ORM mode
 
 
 class UserLogin(BaseModel):
     """Schema for user login."""
-    
+
     email: EmailStr
     password: str
 
 
 class TokenResponse(BaseModel):
     """Schema for authentication token response."""
-    
+
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
@@ -101,7 +103,7 @@ class TokenResponse(BaseModel):
 
 class TokenRefresh(BaseModel):
     """Schema for token refresh request."""
-    
+
     refresh_token: str
 
 

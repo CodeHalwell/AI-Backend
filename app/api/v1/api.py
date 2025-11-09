@@ -20,7 +20,7 @@ Structure:
 
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import auth, agents, conversations, tools
+from app.api.v1.endpoints import agents, auth, conversations, tools
 
 # Create main API router
 api_router = APIRouter()

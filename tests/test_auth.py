@@ -12,7 +12,7 @@ from app.models.user import User
 
 class TestAuth:
     """Authentication endpoint tests."""
-    
+
     @pytest.mark.asyncio
     async def test_register_user(self, client: AsyncClient):
         """Test user registration."""
@@ -24,13 +24,13 @@ class TestAuth:
                 "password": "SecurePass123!",
             }
         )
-        
+
         assert response.status_code == 201
         data = response.json()
         assert data["email"] == "newuser@example.com"
         assert data["full_name"] == "New User"
         assert "hashed_password" not in data
-    
+
     @pytest.mark.asyncio
     async def test_register_duplicate_email(self, client: AsyncClient, test_user: User):
         """Test registration with existing email."""
@@ -42,10 +42,10 @@ class TestAuth:
                 "password": "SecurePass123!",
             }
         )
-        
+
         assert response.status_code == 400
         assert "already registered" in response.json()["detail"]
-    
+
     @pytest.mark.asyncio
     async def test_login_success(self, client: AsyncClient, test_user: User):
         """Test successful login."""
@@ -56,13 +56,13 @@ class TestAuth:
                 "password": "testpassword123",
             }
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert "access_token" in data
         assert "refresh_token" in data
         assert data["token_type"] == "bearer"
-    
+
     @pytest.mark.asyncio
     async def test_login_wrong_password(self, client: AsyncClient, test_user: User):
         """Test login with wrong password."""
@@ -73,9 +73,9 @@ class TestAuth:
                 "password": "wrongpassword",
             }
         )
-        
+
         assert response.status_code == 401
-    
+
     @pytest.mark.asyncio
     async def test_get_current_user(self, client: AsyncClient, auth_headers: dict):
         """Test getting current user info."""
@@ -83,14 +83,14 @@ class TestAuth:
             "/api/v1/auth/me",
             headers=auth_headers,
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert data["email"] == "test@example.com"
-    
+
     @pytest.mark.asyncio
     async def test_unauthorized_access(self, client: AsyncClient):
         """Test accessing protected endpoint without auth."""
         response = await client.get("/api/v1/auth/me")
-        
+
         assert response.status_code == 403  # No credentials

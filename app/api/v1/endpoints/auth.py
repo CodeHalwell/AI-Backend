@@ -16,34 +16,31 @@ Security:
 - Rate limiting on auth endpoints
 """
 
-from datetime import timedelta
 from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 
 from app.core.config import settings
+from app.core.logging import logger
 from app.core.security import (
-    hash_password,
-    verify_password,
     create_access_token,
     create_refresh_token,
     decode_token,
     get_current_user_id,
+    hash_password,
+    verify_password,
 )
-from app.core.logging import logger
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.user import (
-    UserCreate,
-    UserResponse,
-    UserLogin,
-    TokenResponse,
     TokenRefresh,
+    TokenResponse,
+    UserCreate,
+    UserLogin,
+    UserResponse,
 )
 
 router = APIRouter()
@@ -62,17 +59,17 @@ async def register(
 ) -> Any:
     """
     Register a new user.
-    
+
     Steps:
     1. Check if registration is enabled
     2. Validate email is unique
     3. Hash password
     4. Create user record
     5. Return user data (without password)
-    
+
     Returns:
         Created user object
-        
+
     Raises:
         400: If registration is disabled or email already exists
     """
@@ -82,19 +79,19 @@ async def register(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Registration is currently disabled",
         )
-    
+
     # Check if email already exists
     result = await db.execute(
         select(User).where(User.email == user_data.email)
     )
     existing_user = result.scalar_one_or_none()
-    
+
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered",
         )
-    
+
     # Create new user
     user = User(
         email=user_data.email,
@@ -102,13 +99,13 @@ async def register(
         hashed_password=hash_password(user_data.password),
         is_verified=not settings.ENABLE_EMAIL_VERIFICATION,
     )
-    
+
     db.add(user)
     await db.commit()
     await db.refresh(user)
-    
+
     logger.info("User registered", user_id=str(user.id), email=user.email)
-    
+
     return user
 
 
@@ -124,17 +121,17 @@ async def login(
 ) -> Any:
     """
     Login and receive authentication tokens.
-    
+
     Steps:
     1. Find user by email
     2. Verify password
     3. Check account status
     4. Generate tokens
     5. Return tokens
-    
+
     Returns:
         Access token and refresh token
-        
+
     Raises:
         401: If credentials are invalid
         403: If account is not active
@@ -144,7 +141,7 @@ async def login(
         select(User).where(User.email == credentials.email)
     )
     user = result.scalar_one_or_none()
-    
+
     # Verify user and password
     if not user or not verify_password(credentials.password, user.hashed_password):
         logger.warning("Failed login attempt", email=credentials.email)
@@ -152,27 +149,27 @@ async def login(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
         )
-    
+
     # Check if user is active
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Account is not active",
         )
-    
+
     # Check if email is verified (if required)
     if settings.ENABLE_EMAIL_VERIFICATION and not user.is_verified:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Email not verified",
         )
-    
+
     # Create tokens
     access_token = create_access_token(data={"sub": str(user.id)})
     refresh_token = create_refresh_token(data={"sub": str(user.id)})
-    
+
     logger.info("User logged in", user_id=str(user.id), email=user.email)
-    
+
     return TokenResponse(
         access_token=access_token,
         refresh_token=refresh_token,
@@ -193,52 +190,52 @@ async def refresh_token(
 ) -> Any:
     """
     Refresh access token.
-    
+
     Steps:
     1. Validate refresh token
     2. Check token type
     3. Find user
     4. Generate new tokens
-    
+
     Returns:
         New access token and refresh token
-        
+
     Raises:
         401: If refresh token is invalid
     """
     # Decode refresh token
     payload = decode_token(token_data.refresh_token)
-    
+
     # Verify token type
     if payload.get("type") != "refresh":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token type",
         )
-    
+
     user_id = payload.get("sub")
     if not user_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token",
         )
-    
+
     # Verify user still exists and is active
     result = await db.execute(
         select(User).where(User.id == UUID(user_id))
     )
     user = result.scalar_one_or_none()
-    
+
     if not user or not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found or inactive",
         )
-    
+
     # Create new tokens
     access_token = create_access_token(data={"sub": str(user.id)})
     new_refresh_token = create_refresh_token(data={"sub": str(user.id)})
-    
+
     return TokenResponse(
         access_token=access_token,
         refresh_token=new_refresh_token,
@@ -259,12 +256,12 @@ async def get_current_user(
 ) -> Any:
     """
     Get current user information.
-    
+
     Requires authentication via Bearer token.
-    
+
     Returns:
         Current user object
-        
+
     Raises:
         404: If user not found
     """
@@ -272,11 +269,11 @@ async def get_current_user(
         select(User).where(User.id == UUID(user_id))
     )
     user = result.scalar_one_or_none()
-    
+
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
         )
-    
+
     return user

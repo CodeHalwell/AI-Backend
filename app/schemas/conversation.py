@@ -1,8 +1,9 @@
 """Conversation Schemas"""
 
-from typing import Optional, Dict, Any
-from uuid import UUID
 from datetime import datetime
+from typing import Any, Dict, Optional
+from uuid import UUID
+
 from pydantic import BaseModel, Field
 
 from app.models.conversation import ConversationStatus
@@ -35,7 +36,7 @@ class ConversationResponse(BaseModel):
     total_tokens: int
     created_at: datetime
     updated_at: datetime
-    
+
     class Config:
         from_attributes = True
 
@@ -56,7 +57,7 @@ class MessageResponse(BaseModel):
     tool_results: Optional[Dict[str, Any]]
     metadata: Optional[Dict[str, Any]]
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
 

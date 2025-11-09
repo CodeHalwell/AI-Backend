@@ -14,12 +14,12 @@ Why this matters:
 - Makes models available for Alembic migrations
 """
 
-from app.models.base import BaseModel, TimestampMixin, UUIDMixin, SoftDeleteMixin
-from app.models.user import User, UserRole
-from app.models.tool import Tool
 from app.models.agent import Agent
+from app.models.base import BaseModel, SoftDeleteMixin, TimestampMixin, UUIDMixin
 from app.models.conversation import Conversation, ConversationStatus
 from app.models.message import Message, MessageRole
+from app.models.tool import Tool
+from app.models.user import User, UserRole
 
 __all__ = [
     # Base

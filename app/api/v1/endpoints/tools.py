@@ -1,18 +1,17 @@
 """Tool Management Endpoints"""
 
-from typing import List
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import get_current_user_id
 from app.db.session import get_db
 from app.models.tool import Tool
-from pydantic import BaseModel, Field
-from typing import Dict, Any, Optional
-from datetime import datetime
 
 router = APIRouter()
 
@@ -43,7 +42,7 @@ class ToolResponse(BaseModel):
     metadata: Optional[Dict[str, Any]]
     created_at: datetime
     updated_at: datetime
-    
+
     class Config:
         from_attributes = True
 
@@ -60,15 +59,15 @@ async def create_tool(
         select(Tool).where(Tool.name == tool_data.name)
     )
     existing = result.scalar_one_or_none()
-    
+
     if existing:
         raise HTTPException(status_code=400, detail="Tool name already exists")
-    
+
     tool = Tool(**tool_data.model_dump())
     db.add(tool)
     await db.commit()
     await db.refresh(tool)
-    
+
     return tool
 
 
@@ -81,14 +80,14 @@ async def list_tools(
     user_id: str = Depends(get_current_user_id),
 ):
     """List available tools."""
-    query = select(Tool).where(Tool.is_deleted == False)
-    
+    query = select(Tool).where(not Tool.is_deleted)
+
     if only_enabled:
-        query = query.where(Tool.is_enabled == True)
-    
+        query = query.where(Tool.is_enabled)
+
     result = await db.execute(query.offset(skip).limit(limit))
     tools = result.scalars().all()
-    
+
     return tools
 
 
@@ -101,8 +100,8 @@ async def get_tool(
     """Get tool by ID."""
     result = await db.execute(select(Tool).where(Tool.id == tool_id))
     tool = result.scalar_one_or_none()
-    
+
     if not tool:
         raise HTTPException(status_code=404, detail="Tool not found")
-    
+
     return tool

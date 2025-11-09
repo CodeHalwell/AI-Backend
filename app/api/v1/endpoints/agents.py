@@ -3,14 +3,14 @@
 from typing import List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import get_current_user_id
 from app.db.session import get_db
 from app.models.agent import Agent
-from app.schemas.agent import AgentCreate, AgentUpdate, AgentResponse
+from app.schemas.agent import AgentCreate, AgentResponse, AgentUpdate
 
 router = APIRouter()
 
@@ -26,11 +26,11 @@ async def create_agent(
         **agent_data.model_dump(),
         owner_id=UUID(user_id),
     )
-    
+
     db.add(agent)
     await db.commit()
     await db.refresh(agent)
-    
+
     return agent
 
 
@@ -45,7 +45,7 @@ async def list_agents(
     result = await db.execute(
         select(Agent)
         .where(Agent.owner_id == UUID(user_id))
-        .where(Agent.is_deleted == False)
+        .where(not Agent.is_deleted)
         .offset(skip)
         .limit(limit)
     )
@@ -66,10 +66,10 @@ async def get_agent(
         .where(Agent.owner_id == UUID(user_id))
     )
     agent = result.scalar_one_or_none()
-    
+
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
-    
+
     return agent
 
 
@@ -87,16 +87,16 @@ async def update_agent(
         .where(Agent.owner_id == UUID(user_id))
     )
     agent = result.scalar_one_or_none()
-    
+
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
-    
+
     for key, value in agent_data.model_dump(exclude_unset=True).items():
         setattr(agent, key, value)
-    
+
     await db.commit()
     await db.refresh(agent)
-    
+
     return agent
 
 
@@ -113,12 +113,12 @@ async def delete_agent(
         .where(Agent.owner_id == UUID(user_id))
     )
     agent = result.scalar_one_or_none()
-    
+
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
-    
+
     from datetime import datetime
     agent.is_deleted = True
     agent.deleted_at = datetime.utcnow()
-    
+
     await db.commit()
