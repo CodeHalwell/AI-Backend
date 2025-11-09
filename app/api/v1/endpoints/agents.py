@@ -117,8 +117,8 @@ async def delete_agent(
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
 
-    from datetime import datetime
+    from datetime import datetime, timezone
     agent.is_deleted = True
-    agent.deleted_at = datetime.utcnow()
+    agent.deleted_at = datetime.now(timezone.utc)
 
     await db.commit()
