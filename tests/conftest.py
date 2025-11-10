@@ -16,7 +16,7 @@ from typing import AsyncGenerator, Generator
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
 from app.core.security import hash_password
 from app.db.session import Base, get_db
@@ -72,16 +72,21 @@ async def test_engine():
 
 @pytest.fixture
 async def db_session(test_engine) -> AsyncGenerator[AsyncSession, None]:
-    """Create test database session."""
-    async_session = async_sessionmaker(
-        test_engine,
-        class_=AsyncSession,
-        expire_on_commit=False,
-    )
+    """Create test database session with transaction rollback for test isolation."""
+    # Create a connection and start a transaction
+    connection = await test_engine.connect()
+    transaction = await connection.begin()
 
-    async with async_session() as session:
+    # Create session bound to this connection
+    session = AsyncSession(bind=connection, expire_on_commit=False)
+
+    try:
         yield session
-        await session.rollback()
+    finally:
+        # Rollback transaction to undo any changes made during test
+        await session.close()
+        await transaction.rollback()
+        await connection.close()
 
 
 @pytest.fixture
