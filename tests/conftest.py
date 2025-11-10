@@ -15,6 +15,7 @@ from typing import AsyncGenerator, Generator
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.security import hash_password
@@ -40,12 +41,31 @@ async def test_engine():
     engine = create_async_engine(TEST_DATABASE_URL, echo=False)
 
     async with engine.begin() as conn:
+        # Drop all tables and enum types first (cleanup from previous runs)
+        await conn.run_sync(Base.metadata.drop_all)
+
+        # Drop enum types explicitly if they exist (handles orphaned enums)
+        await conn.execute(text("DROP TYPE IF EXISTS userrole CASCADE"))
+        await conn.execute(text("DROP TYPE IF EXISTS conversationstatus CASCADE"))
+        await conn.execute(text("DROP TYPE IF EXISTS messagerole CASCADE"))
+
+        # Create enum types explicitly before creating tables
+        await conn.execute(text("CREATE TYPE userrole AS ENUM ('admin', 'user', 'viewer')"))
+        await conn.execute(text("CREATE TYPE conversationstatus AS ENUM ('active', 'archived', 'completed')"))
+        await conn.execute(text("CREATE TYPE messagerole AS ENUM ('user', 'assistant', 'system', 'tool')"))
+
+        # Now create all tables (enums already exist)
         await conn.run_sync(Base.metadata.create_all)
 
     yield engine
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
+
+        # Clean up enum types
+        await conn.execute(text("DROP TYPE IF EXISTS messagerole CASCADE"))
+        await conn.execute(text("DROP TYPE IF EXISTS conversationstatus CASCADE"))
+        await conn.execute(text("DROP TYPE IF EXISTS userrole CASCADE"))
 
     await engine.dispose()
 

@@ -80,7 +80,7 @@ class Conversation(Base, BaseModel, SoftDeleteMixin):
 
     # Status
     status = Column(
-        SQLEnum(ConversationStatus, name="conversationstatus", create_type=True, native_enum=True),
+        SQLEnum(ConversationStatus, name="conversationstatus", create_type=False),
         nullable=False,
         default=ConversationStatus.ACTIVE,
         server_default="active",

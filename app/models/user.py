@@ -87,7 +87,7 @@ class User(Base, BaseModel, SoftDeleteMixin):
 
     # Role and Permissions
     role = Column(
-        SQLEnum(UserRole, name="userrole", create_type=True, native_enum=True),
+        SQLEnum(UserRole, name="userrole", create_type=False),
         nullable=False,
         default=UserRole.USER,
         server_default="user",
