@@ -87,10 +87,10 @@ class User(Base, BaseModel, SoftDeleteMixin):
 
     # Role and Permissions
     role = Column(
-        SQLEnum(UserRole),
+        SQLEnum(UserRole, name="userrole", create_type=True, native_enum=True),
         nullable=False,
         default=UserRole.USER,
-        server_default=UserRole.USER.value,
+        server_default="user",
         comment="User role for RBAC",
     )
 

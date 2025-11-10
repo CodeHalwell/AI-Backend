@@ -67,7 +67,7 @@ class Message(Base, BaseModel):
 
     # Message Content
     role = Column(
-        SQLEnum(MessageRole),
+        SQLEnum(MessageRole, name="messagerole", create_type=True, native_enum=True),
         nullable=False,
         comment="Role: user, assistant, system, or tool",
     )
