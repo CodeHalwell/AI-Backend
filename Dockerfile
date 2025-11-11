@@ -23,8 +23,9 @@ RUN apt-get update && apt-get install -y \
 # Install uv for fast package management
 RUN pip install uv
 
-# Copy dependency files
-COPY pyproject.toml ./
+# Copy dependency files and source code needed for editable install
+COPY pyproject.toml README.md ./
+COPY app ./app
 
 # Install dependencies
 RUN uv pip install --system --no-cache-dir -e .
