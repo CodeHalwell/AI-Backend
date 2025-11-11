@@ -5,18 +5,25 @@ Shared test fixtures for all tests.
 
 Fixtures provide:
 - Test database
-- Test client
+- Test client with lifespan management
 - Authenticated users
 - Sample data
+
+Key Design:
+- Uses LifespanManager to properly manage FastAPI app lifecycle
+- Database engine/pool managed by app startup/shutdown events
+- Test isolation via database cleanup between tests
+- No manual connection/transaction management in fixtures
 """
 
 import asyncio
 from typing import AsyncGenerator, Generator
 
 import pytest
+from asgi_lifespan import LifespanManager
 from httpx import AsyncClient
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.core.security import hash_password
 from app.db.session import Base, get_db
@@ -35,9 +42,9 @@ def event_loop() -> Generator:
     loop.close()
 
 
-@pytest.fixture(scope="session")
-async def test_engine():
-    """Create test database engine."""
+@pytest.fixture(scope="session", autouse=True)
+async def setup_test_database():
+    """Set up test database schema before tests run."""
     engine = create_async_engine(TEST_DATABASE_URL, echo=False)
 
     async with engine.begin() as conn:
@@ -51,14 +58,19 @@ async def test_engine():
 
         # Create enum types explicitly before creating tables
         await conn.execute(text("CREATE TYPE userrole AS ENUM ('admin', 'user', 'viewer')"))
-        await conn.execute(text("CREATE TYPE conversationstatus AS ENUM ('active', 'archived', 'completed')"))
-        await conn.execute(text("CREATE TYPE messagerole AS ENUM ('user', 'assistant', 'system', 'tool')"))
+        await conn.execute(
+            text("CREATE TYPE conversationstatus AS ENUM ('active', 'archived', 'completed')")
+        )
+        await conn.execute(
+            text("CREATE TYPE messagerole AS ENUM ('user', 'assistant', 'system', 'tool')")
+        )
 
         # Now create all tables (enums already exist)
         await conn.run_sync(Base.metadata.create_all)
 
-    yield engine
+    yield
 
+    # Cleanup after all tests
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
 
@@ -71,78 +83,72 @@ async def test_engine():
 
 
 @pytest.fixture
-async def db_session(test_engine) -> AsyncGenerator[AsyncSession, None]:
-    """Create test database session with transaction rollback for test isolation."""
-    # Create a connection and start a transaction
-    connection = await test_engine.connect()
-    transaction = await connection.begin()
+async def client() -> AsyncGenerator[AsyncClient, None]:
+    """
+    Create test client with proper lifespan management.
 
-    # Create session bound to this connection
-    session = AsyncSession(bind=connection, expire_on_commit=False)
-
-    try:
-        yield session
-    finally:
-        # Rollback transaction to undo any changes made during test
-        await session.close()
-        await transaction.rollback()
-        await connection.close()
+    Uses LifespanManager to ensure FastAPI startup/shutdown events
+    run correctly, preventing database connection cleanup issues.
+    """
+    async with LifespanManager(app):
+        async with AsyncClient(app=app, base_url="http://test") as ac:
+            yield ac
 
 
 @pytest.fixture
-async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
-    """Create test client."""
-    async def override_get_db():
-        yield db_session
+async def test_user(client: AsyncClient) -> User:
+    """Create test user via API."""
+    # Get a database session from the app's dependency
+    async for session in get_db():
+        user = User(
+            email="test@example.com",
+            full_name="Test User",
+            hashed_password=hash_password("testpassword123"),
+            role=UserRole.USER,
+            is_active=True,
+            is_verified=True,
+        )
+        session.add(user)
+        await session.commit()
+        await session.refresh(user)
 
-    app.dependency_overrides[get_db] = override_get_db
+        yield user
 
-    async with AsyncClient(app=app, base_url="http://test") as ac:
-        yield ac
-
-    app.dependency_overrides.clear()
-
-
-@pytest.fixture
-async def test_user(db_session: AsyncSession) -> User:
-    """Create test user."""
-    user = User(
-        email="test@example.com",
-        full_name="Test User",
-        hashed_password=hash_password("testpassword123"),
-        role=UserRole.USER,
-        is_active=True,
-        is_verified=True,
-    )
-    db_session.add(user)
-    await db_session.commit()
-    await db_session.refresh(user)
-    return user
+        # Cleanup: delete test user after test
+        await session.delete(user)
+        await session.commit()
+        break
 
 
 @pytest.fixture
-async def admin_user(db_session: AsyncSession) -> User:
-    """Create admin user."""
-    user = User(
-        email="admin@example.com",
-        full_name="Admin User",
-        hashed_password=hash_password("adminpassword123"),
-        role=UserRole.ADMIN,
-        is_active=True,
-        is_verified=True,
-    )
-    db_session.add(user)
-    await db_session.commit()
-    await db_session.refresh(user)
-    return user
+async def admin_user(client: AsyncClient) -> User:
+    """Create admin user via API."""
+    async for session in get_db():
+        user = User(
+            email="admin@example.com",
+            full_name="Admin User",
+            hashed_password=hash_password("adminpassword123"),
+            role=UserRole.ADMIN,
+            is_active=True,
+            is_verified=True,
+        )
+        session.add(user)
+        await session.commit()
+        await session.refresh(user)
+
+        yield user
+
+        # Cleanup: delete admin user after test
+        await session.delete(user)
+        await session.commit()
+        break
 
 
 @pytest.fixture
 async def auth_headers(client: AsyncClient, test_user: User) -> dict:
     """Get authentication headers for test user."""
     response = await client.post(
-        "/api/v1/auth/login",
-        json={"email": "test@example.com", "password": "testpassword123"}
+        "/api/v1/auth/login", json={"email": "test@example.com", "password": "testpassword123"}
     )
     token = response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
