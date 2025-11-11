@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ai-backend-config
+  namespace: ai-backend
+data:
+  redis-url: "redis://redis-service:6379/0"
+  log-level: "INFO"
+  workers: "4"
+  cors-origins: '["https://yourdomain.com"]'
